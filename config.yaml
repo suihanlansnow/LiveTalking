@@ -10,21 +10,21 @@ r: 10
 
 # -------- Avatar Model ----------------------------------------------------------
 model: wav2lip                 # musetalk / wav2lip / ultralight
-avatar_id: wav2lip256_avatar1
-batch_size: 16
+avatar_id: wav2lip256_avatar1_motion
+batch_size: 8
 
 # -------- Custom Actions ----------------------------------------------------------
 customvideo_config: ''
 
 # -------- TTS ----------------------------------------------------------
-tts: edgetts                   # edgetts / gpt-sovits / cosyvoice / fishtts / tencent / doubao / indextts2 / azuretts / qwentts
-REF_FILE: ''                   # voice name or reference audio file path (wav, 16kHz, mono)
+tts: kokoro                    # edgetts / piper / gpt-sovits / cosyvoice / kokoro / fishtts / tencent / doubao / indextts2 / azuretts / qwentts
+REF_FILE: 'zf_001'             # 音色：kokoro 用音色名(zf_001等) / 其它引擎用参考音频路径
 REF_TEXT: ''                   # reference text for voice cloning (English or Chinese)
-TTS_SERVER: ''                 # TTS server URL, no trailing slash
+TTS_SERVER: 'http://127.0.0.1:9881'  # TTS server URL, no trailing slash
 
 # -------- LLM ----------------------------------------------------------
-llm_provider: dashscope        # dashscope / orcarouter
-llm_model: ''                  # model override, empty = provider default (qwen-plus / orcarouter/auto)
+llm_provider: ollama           # dashscope / orcarouter / ollama
+llm_model: 'qwen2.5:3b'        # model override, empty = provider default (qwen-plus / orcarouter/auto / qwen2.5:3b)
 
 # -------- Transport ----------------------------------------------------------
 transport: webrtc              # rtcpush / webrtc / rtmp / virtualcam

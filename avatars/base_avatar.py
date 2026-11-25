@@ -88,9 +88,11 @@ class BaseAvatar:
 
         _tts_modules = {
             'edgetts': 'tts.edge',
+            'piper': 'tts.piper',
             'gpt-sovits': 'tts.sovits',
             'xtts': 'tts.xtts',
-            # 'cosyvoice': 'tts.cosyvoice',
+            'cosyvoice': 'tts.cosyvoice',
+            'kokoro': 'tts.kokoro',
             # 'fishtts': 'tts.fish',
             'tencent': 'tts.tencent',
             'doubao': 'tts.doubao',
@@ -323,6 +325,15 @@ class BaseAvatar:
             return len(self.frame_list_cycle)
         return 1
         
+    def _put_res_frame(self, item, quit_event):
+        """带超时地放入渲染队列，避免输出侧背压时阻塞退出流程"""
+        while not quit_event.is_set():
+            try:
+                self.res_frame_queue.put(item, timeout=0.2)
+                return
+            except queue.Full:
+                continue
+
     def inference(self, quit_event):
         length = self.get_avatar_length()
         index = 0
@@ -344,20 +355,26 @@ class BaseAvatar:
                 
             is_all_silence = True
             audio_frames: list[AudioFrameData] = []
-            for _ in range(self.batch_size * 2):
-                audioframe:AudioFrameData = self.asr.output_queue.get()
+            while len(audio_frames) < self.batch_size * 2 and not quit_event.is_set():
+                try:
+                    audioframe: AudioFrameData = self.asr.output_queue.get(timeout=0.5)
+                except queue.Empty:
+                    continue
                 if audioframe.type == 0:
-                    is_all_silence = False               
+                    is_all_silence = False
                 audio_frames.append(audioframe)
+            if len(audio_frames) < self.batch_size * 2:
+                break
 
              # 检测状态变化
             current_speaking = not is_all_silence
 
             if is_all_silence: #全为静音数据，只需要取fullimg，不需要推理
+                # 静音时 index 不推进 → 底图静止（避免循环动作穿帮）
+                # 说话时 index 才推进 → 头动/表情自然
+                silent_idx = mirror_index(length, index)
                 for i in range(self.batch_size):
-                    idx = mirror_index(length, index)
-                    self.res_frame_queue.put((None, audio_frames[i*2:i*2+2], idx))
-                    index = index + 1
+                    self._put_res_frame((None, audio_frames[i*2:i*2+2], silent_idx), quit_event)
             else:
                 if current_speaking and not last_speaking and self.custom_index.get(1) is not None: #从静音到说话切换,并且有自定义静态视频
                     index = 0
@@ -372,7 +389,7 @@ class BaseAvatar:
                     count = 0
                     counttime = 0
                 for i, res_frame in enumerate(pred):
-                    self.res_frame_queue.put((res_frame, audio_frames[i*2:i*2+2], mirror_index(length, index)))
+                    self._put_res_frame((res_frame, audio_frames[i*2:i*2+2], mirror_index(length, index)), quit_event)
                     index = index + 1
                     
             if current_speaking != last_speaking:
@@ -393,6 +410,11 @@ class BaseAvatar:
         self.output.start()
         
         while not quit_event.is_set():
+            # 输出侧背压：静音时预渲染帧会堆在输出缓冲里，导致真正开口时延迟变大
+            buffer_size = self.output.get_buffer_size() if hasattr(self.output, 'get_buffer_size') else 0
+            if buffer_size >= 5:
+                time.sleep(0.02)
+                continue
             try:
                 audio_frames: list[AudioFrameData]
                 res_frame,audio_frames,idx = self.res_frame_queue.get(block=True, timeout=1)

@@ -138,11 +138,31 @@ class LipReal(BaseAvatar):
         pred = pred.cpu().numpy().transpose(0, 2, 3, 1) * 255.
         return pred
 
-    def paste_back_frame(self,pred_frame,idx:int):
+    def paste_back_frame(self, pred_frame, idx: int):
         bbox = self.coord_list_cycle[idx]
         combine_frame = self.frame_list_cycle[idx].copy()
         y1, y2, x1, x2 = bbox
-        res_frame = cv2.resize(pred_frame.astype(np.uint8),(x2-x1,y2-y1))
-        combine_frame[y1:y2, x1:x2] = res_frame
+        w = x2 - x1
+        h = y2 - y1
+        res_frame = cv2.resize(pred_frame.astype(np.uint8), (w, h))
+
+        # 只贴下半脸（嘴部），上半脸（眼睛/头动）保留底图
+        # Wav2Lip 输入 mask 是下半脸 → 模型主要在下半脸产生变化
+        # 上半脸保留底图的头动/眨眼效果，避免说话时表情"冻住"
+        mouth_top_y = int(h * 0.42)
+        feather = max(1, int(h * 0.06))
+
+        # 构造垂直渐变 mask: shape (h, w, 1)
+        mask = np.zeros((h, w, 1), dtype=np.float32)
+        mask[mouth_top_y:, :] = 1.0
+        fade_in_start = max(0, mouth_top_y - feather)
+        fade_in_end = min(h, mouth_top_y + feather)
+        if fade_in_end > fade_in_start:
+            ramp = np.linspace(0, 1, fade_in_end - fade_in_start, dtype=np.float32)[:, None, None]
+            mask[fade_in_start:fade_in_end, :] = ramp
+
+        roi = combine_frame[y1:y2, x1:x2].astype(np.float32)
+        blended = (roi * (1 - mask) + res_frame.astype(np.float32) * mask).astype(np.uint8)
+        combine_frame[y1:y2, x1:x2] = blended
         return combine_frame
 
