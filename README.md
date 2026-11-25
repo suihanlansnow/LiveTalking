@@ -100,18 +100,8 @@ Piper 无需额外服务，模型放到 `models/piper/zh_CN-huayan-medium.onnx`�
 
 > CosyVoice2-0.5B 同机实测 RTF 2.6-4.5、首包 8-14s，无法实时。根因是该机 CPU 单次 CUDA kernel launch 约 71µs，自回归模型每 token 约 1100 次 launch，属硬件限制。
 
-## 6. 架构
+---
 
-`/human` 接收文本（echo 复读 / chat LLM 对话），`/humanaudio` 直接播放音频，每个连接分配唯一 `sessionid`。
-TTS 模块化输出音频 → 同步提取 Mel 频谱 → Wav2Lip/MuseTalk 生成口型 → 仅融合下半脸贴回原视频（保留头动眨眼）→ WebRTC/RTMP/虚拟摄像头输出。
-
-<img src="./assets/dataflow.png" align="middle" />
-
-## 7. 相关链接
-
-- 文档：<https://doc.livetalking.ai> ｜ [业务 API](docs/api.md) ｜ [Avatar API](docs/avatar_api.md) ｜ [Admin API](docs/admin_api.md)
-- Docker：[AutoDL](https://www.codewithgpu.com/i/lipku/livetalking/base) ｜ [UCloud](https://www.compshare.cn/images/4458094e-a43d-45fe-9b57-de79253befe4?referral_code=3XW3852OBmnD089hMMrtuU&ytag=GPU_GitHub_livetalking)
-- Windows 整合包：<https://pan.quark.cn/s/a040bf5cb065> ｜ 商用版：<https://www.livetalking.top>
-- 社区：[Telegram](https://t.me/livetalking) ｜ [Discord](https://discord.gg/n5jSPCT3Uf) ｜ 微信 wxwubug ｜ 邮箱 lipku@foxmail.com
+文档：<https://doc.livetalking.ai> ｜ [业务 API](docs/api.md) ｜ [Avatar API](docs/avatar_api.md) ｜ [Admin API](docs/admin_api.md) ｜ [Docker 镜像](https://www.codewithgpu.com/i/lipku/livetalking/base) ｜ [商用版](https://www.livetalking.top) ｜ [社区](https://t.me/livetalking)
 
 基于本项目发布的视频需带上 LiveTalking 水印和标识。License: [Apache 2.0](./LICENSE)
