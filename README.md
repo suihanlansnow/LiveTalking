@@ -56,6 +56,7 @@
 7. 支持多并发
 8. 支持自定义数字人形象
 9. 提供前端API接口对接
+10. 支持本地离线 TTS（Piper / Kokoro），无需联网、无需 API Key
 
 ---
 
@@ -149,6 +150,36 @@ python app.py --transport webrtc --model wav2lip --avatar_id wav2lip256_avatar1
 ### 2.6 使用说明  
 <https://doc.livetalking.ai>
 
+### 2.7 本地离线 TTS
+
+本分支默认使用 `kokoro`（完全离线，无需联网和 API Key）。如需改用云端或其他引擎，修改 `config.yaml` 的 `tts` 字段即可（可选值见 [avatars/base_avatar.py](avatars/base_avatar.py) 中的 `_tts_modules`）。
+
+| 引擎 | `tts` 取值 | 首包延迟 | 说明 |
+|------|-----------|---------|------|
+| Kokoro-82M | `kokoro` | ~0.5s | 中文音色 `zf_001`~`zf_005`、`zm_009`~`zm_011`，音质明显优于 Piper，推荐 |
+| Piper | `piper` | ~0.3s | 单个 onnx 模型常驻内存，最轻量 |
+
+Kokoro 需独立环境运行 HTTP 服务（避免与主项目依赖冲突）：
+
+```bash
+pip install kokoro "misaki[zh]"          # 独立 venv，需 torch>=2.1
+python tts/kokoro_server.py              # 服务端，默认 127.0.0.1:9881
+```
+
+然后修改 `config.yaml`：
+
+```yaml
+tts: kokoro
+REF_FILE: 'zf_001'                        # Kokoro 音色名
+TTS_SERVER: 'http://127.0.0.1:9881'
+```
+
+Piper 则无需额外服务，把模型放到 `models/piper/zh_CN-huayan-medium.onnx`（或用 `piper_model` 指定路径），并把 `tts` 改为 `piper`。
+
+启动顺序：先起 TTS 服务，再起 `app.py`。
+
+> 说明：`llm.py` 的流式输出只在句末标点（`。！？；`）处切句，逗号不切分，避免一句话被切成多段导致韵律断裂；超过 30 字仍未遇到句号时才回退到最近的逗号处软切。
+
 ---
 
 ## 3. 系统架构
@@ -167,7 +198,7 @@ python app.py --transport webrtc --model wav2lip --avatar_id wav2lip256_avatar1
 
 **逻辑层**
 - **LLM 引擎**: 对接 Qwen 等大模型生成对话回复 
-- **TTS 引擎**: 模块化设计，支持 EdgeTTS、GPT-SoVITS、CosyVoice、腾讯云等多种方案
+- **TTS 引擎**: 模块化设计，支持 EdgeTTS、Piper、Kokoro、GPT-SoVITS、CosyVoice、腾讯云、豆包等多种方案
 - **特征提取**: 同步提取音频的声学特征（如 Mel 频谱），用于口型推理
 
 **渲染层**

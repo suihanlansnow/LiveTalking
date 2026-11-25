@@ -25,7 +25,7 @@ class KokoroTTS(BaseTTS):
                                 json={'text': text, 'voice': voice, 'speed': speed},
                                 stream=True, timeout=120)
         except Exception:
-            logger.error(f'kokoro tts 服务不可用，请先启动: python H:\\tools\\kokoro_api.py')
+            logger.error('kokoro tts 服务不可用，请先启动: python tts/kokoro_server.py')
             return
         if res.status_code != 200:
             logger.error(f'kokoro tts http {res.status_code}: {res.text[:200]}')
